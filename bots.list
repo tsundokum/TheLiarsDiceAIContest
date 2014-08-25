@@ -1,0 +1,4 @@
+# bot files must be copied into 'bots' folder
+Anton -> java -jar AntonPopovich.jar
+Marat -> python3 marat.py
+Yoptar -> python3 marat.py
