@@ -7,10 +7,11 @@ from subprocess import Popen, PIPE
 import sys
 import os
 import signal
+from time import sleep
 
 TIMEOUT = 'timeout'
 
-TIMEOUT = 0.130
+TIMEOUT = 10.130
 ILLEGAL_ACTION = 'illegal_action'
 DELIM = ' -> '
 LIAR = 'liar'
@@ -99,17 +100,54 @@ def alarm_handler(signum, frame):
     raise Alarm
 
 
-def create_bot(command_to_start):
-    proc = Popen(shlex.split(command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE)
-    def f(ros):
-        signal.signal(signal.SIGALRM, alarm_handler)
-        signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
+def reverse_for_ilyin(line):
+    """
+    >>> reverse_for_ilyin('*')
+    '*'
+    >>> reverse_for_ilyin('1 11,12,13')
+    '1 13,12,11'"""
+    return line[0] + (' ' + ','.join(line[2:].split(',')[::-1]) if ' ' in line else '')
 
-        print(ros, file=proc.stdin)
-        answer = proc.stdout.readline().strip()
-        signal.alarm(0)
-        return answer
-    return f
+
+class Bot:
+    def create(self):
+        self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
+    def __init__(self, command_to_start, name):
+        self.command_to_start = command_to_start
+        self.name = name
+
+    def __call__(self, *args, **kwargs):
+        assert len(args) == 1
+        ros = args[0]
+        if self.name == 'ilyin':
+            ros = reverse_for_ilyin(ros)
+
+        self.create()
+        #signal.signal(signal.SIGALRM, alarm_handler)
+        #signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
+        #if self.proc.
+        answer, err = self.proc.communicate(input=ros + '\n')
+
+        #print(ros, file=self.proc.stdin)
+        #sleep(0.1)
+        #answer = self.proc.stdout.readline().strip()
+        #sleep(0.02)
+        #signal.alarm(0)
+        return answer.strip()
+
+
+#def create_bot(command_to_start):
+#    proc = Popen(shlex.split(command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE)
+#    def f(ros):
+#        signal.signal(signal.SIGALRM, alarm_handler)
+#        signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
+#
+#        print(ros, file=proc.stdin)
+#        answer = proc.stdout.readline().strip()
+#        signal.alarm(0)
+#        return answer
+#    return f
 
 
 def random_state():
@@ -132,12 +170,12 @@ def fight_once(bots):
     winner = None
     status = 'ok'
     while 1:
-        try:
-            answer = bots[state.whos_turn](state_to_string(state))
-        except Alarm:
-            status = TIMEOUT
-            winner = next_player(state.whos_turn)
-            break
+        #try:
+        answer = bots[state.whos_turn](state_to_string(state))
+        #except Alarm:
+        #    status = TIMEOUT
+        #    winner = next_player(state.whos_turn)
+        #    break
         if answer not in all_possible_actions(state.actions[-1] if state.actions else ''):
             winner = next_player(state.whos_turn)
             status = ILLEGAL_ACTION
@@ -150,6 +188,12 @@ def fight_once(bots):
             'status': status,
             'first_to_move': first_to_move,
             'round_len': len(state.actions) + 1}
+
+
+def percent(numerator, denominator):
+    if denominator in {0, 0.0}:
+        return 'NA'
+    return '%.2f%%' % (numerator / denominator * 100)
 
 
 if __name__ == '__main__':
@@ -167,22 +211,30 @@ if __name__ == '__main__':
 
     os.chdir('bots')
 
-    bots = [create_bot(bot_instructions[bot_name]) for bot_name in bot_names]
+    bots = [Bot(bot_instructions[bot_name], bot_name) for bot_name in bot_names]
+    print(bot_names)
 
-    results = [fight_once(bots) for _ in range(100)]
+    results = []
+    for i in range(1001):
+        #if i % 10 == 0:
+        print(i)
+        results.append(fight_once(bots))
+
+    print()
+    #results = [fight_once(bots) for _ in range(1001)]
     games_count = len(results)
     for bot_id, bot in enumerate(bot_names):
         wins = len([r for r in results if r['winner'] == bot_id])
-        print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins:.1f}%'.format(bot=bot,
-                                                                                  bot_wins=wins,
-                                                                                  total_games=games_count,
-                                                                                  percent_of_wins=wins / games_count * 100))
+        print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins}%%'.format(bot=bot,
+                                                                                       bot_wins=wins,
+                                                                                       total_games=games_count,
+                                                                                       percent_of_wins=percent(wins, games_count)))
         when_first = len([r for r in results if r['first_to_move'] == bot_id == r['winner']])
-        print('%.1f%% of wons having first move' % (when_first / wins * 100))
+        print('%s%% of wons having first move' % percent(when_first, wins))
         illegal_moves = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == ILLEGAL_ACTION)])
-        print('lost by illegal moves: %d (%.2f%% of all losses)' % (illegal_moves, illegal_moves / (games_count - wins) * 100))
+        print('lost by illegal moves: %d (%s of all losses)' % (illegal_moves, percent(illegal_moves, games_count - wins)))
         timeouts = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == TIMEOUT)])
-        print('lost by timeouts: %d (%.2f%% of all losses)' % (timeouts, timeouts / (games_count - wins) * 100))
+        print('lost by timeouts: %d (%s of all losses)' % (timeouts, percent(timeouts, games_count - wins)))
         print()
 
     print('Mean round length is %0.2f turns' % mean([r['round_len'] for r in results]))
