@@ -6,5 +6,5 @@
 {"name": "pavel", "version": 1, "cmd": "python3 -u pavel_perudo_bot.py"}
 {"name": "pavel2", "version": 1, "cmd": "python3 -u pavel_perudo_bot.py"}
 {"name": "ilyin", "version": 1, "cmd": "java -jar ilyin.jar"}
-{"name": "liar", "version": 1, "cmd": "python3 -u LiarOnlyBot.py"}
-{"name": "liar2", "version": 1, "cmd": "python3 -u LiarOnlyBot.py"}
+{"name": "sample1", "version": 1, "cmd": "python3 -u sample1.py"}
+{"name": "sample2", "version": 1, "cmd": "python3 -u sample2.py"}
