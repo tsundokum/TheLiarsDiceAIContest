@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from collections import namedtuple
+import json
 from random import choice
 import shlex
 from statistics import mean
@@ -7,7 +8,7 @@ from subprocess import Popen, PIPE
 import sys
 import os
 import signal
-from time import sleep
+from time import sleep, time
 
 TIMEOUT = 'timeout'
 
@@ -84,13 +85,16 @@ def random_dice():
 
 def read_bot_instructions():
     with open('bots.list') as f:
-        bots = []
+        bots = {}
         for line in f:
-            if line.startswith('#') or (DELIM not in line):
+            if line.startswith('#'):
                 continue
-            bots.append(line.strip().split(DELIM, maxsplit=1))
-    return dict(bots)
-
+            try:
+                b = json.loads(line)
+                bots[b['name']] = b
+            except Exception as ex:
+                print('[Exception] %s' % ex, file=sys.stderr)
+    return bots
 
 class Alarm(Exception):
     pass
@@ -109,45 +113,26 @@ def reverse_for_ilyin(line):
     return line[0] + (' ' + ','.join(line[2:].split(',')[::-1]) if ' ' in line else '')
 
 
-class Bot:
-    def create(self):
-        self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-
-    def __init__(self, command_to_start, name):
+class PopenBot:
+    def __init__(self, command_to_start, name, version=2):
         self.command_to_start = command_to_start
         self.name = name
+        self.version = version
+        self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, read_answer=True, **kwargs):
         assert len(args) == 1
         ros = args[0]
-        if self.name == 'ilyin':
-            ros = reverse_for_ilyin(ros)
 
-        self.create()
-        #signal.signal(signal.SIGALRM, alarm_handler)
-        #signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
-        #if self.proc.
-        answer, err = self.proc.communicate(input=ros + '\n')
+        if self.version == 1:  # version 1 bots can't parse game stats
+            if ros.startswith('win') or ros.startswith('loss'):
+                return
 
-        #print(ros, file=self.proc.stdin)
-        #sleep(0.1)
-        #answer = self.proc.stdout.readline().strip()
-        #sleep(0.02)
-        #signal.alarm(0)
-        return answer.strip()
-
-
-#def create_bot(command_to_start):
-#    proc = Popen(shlex.split(command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE)
-#    def f(ros):
-#        signal.signal(signal.SIGALRM, alarm_handler)
-#        signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
-#
-#        print(ros, file=proc.stdin)
-#        answer = proc.stdout.readline().strip()
-#        signal.alarm(0)
-#        return answer
-#    return f
+        start_time = time()
+        print(ros, file=self.proc.stdin)
+        if read_answer:
+            answer = self.proc.stdout.readline().strip()
+            return answer.strip(), time() - start_time
 
 
 def random_state():
@@ -170,15 +155,11 @@ def fight_once(bots):
     winner = None
     status = 'ok'
     while 1:
-        #try:
-        answer = bots[state.whos_turn](state_to_string(state))
-        #except Alarm:
-        #    status = TIMEOUT
-        #    winner = next_player(state.whos_turn)
-        #    break
+        answer, time_spent = bots[state.whos_turn](state_to_string(state))
         if answer not in all_possible_actions(state.actions[-1] if state.actions else ''):
             winner = next_player(state.whos_turn)
             status = ILLEGAL_ACTION
+            print('[ILLEGAL_MOVE] Got "%s" on state "%s"' % (answer, state_to_string(state)))
             break
         if answer == LIAR:
             winner = determine_winner(state)
@@ -211,13 +192,16 @@ if __name__ == '__main__':
 
     os.chdir('bots')
 
-    bots = [Bot(bot_instructions[bot_name], bot_name) for bot_name in bot_names]
+    bots = [PopenBot(bot['cmd'],
+                     bot['name'],
+                     version=int(bot.get('version', 2)))
+            for bot in [bot_instructions[b] for b in bot_names]]
     print(bot_names)
 
     results = []
-    for i in range(1001):
-        #if i % 10 == 0:
-        print(i)
+    for i in range(10001):
+        if i % 100 == 0:
+            print(i)
         results.append(fight_once(bots))
 
     print()
@@ -226,9 +210,9 @@ if __name__ == '__main__':
     for bot_id, bot in enumerate(bot_names):
         wins = len([r for r in results if r['winner'] == bot_id])
         print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins}%%'.format(bot=bot,
-                                                                                       bot_wins=wins,
-                                                                                       total_games=games_count,
-                                                                                       percent_of_wins=percent(wins, games_count)))
+                                                                                    bot_wins=wins,
+                                                                                    total_games=games_count,
+                                                                                    percent_of_wins=percent(wins, games_count)))
         when_first = len([r for r in results if r['first_to_move'] == bot_id == r['winner']])
         print('%s%% of wons having first move' % percent(when_first, wins))
         illegal_moves = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == ILLEGAL_ACTION)])
