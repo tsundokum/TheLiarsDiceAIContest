@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 from collections import namedtuple
 import json
 from random import choice
@@ -113,14 +114,16 @@ def reverse_for_ilyin(line):
     return line[0] + (' ' + ','.join(line[2:].split(',')[::-1]) if ' ' in line else '')
 
 
-class PopenBot:
-    def __init__(self, command_to_start, name, version=2):
+class Bot:
+    def __init__(self, command_to_start, name, timeout_millis, version=2):
         self.command_to_start = command_to_start
         self.name = name
         self.version = version
         self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        self.time_to_think_millis = timeout_millis
+        self.time_left_millis = 0
 
-    def __call__(self, *args, read_answer=True, **kwargs):
+    def communicate(self, *args, read_answer=True, **kwargs):
         assert len(args) == 1
         ros = args[0]
 
@@ -132,7 +135,13 @@ class PopenBot:
         print(ros, file=self.proc.stdin)
         if read_answer:
             answer = self.proc.stdout.readline().strip()
-            return answer.strip(), time() - start_time
+            return answer.strip(), int((time() - start_time) * 1000)
+
+    def time_left(self, millis):
+        self.time_left_millis += millis
+
+    def get_millis_left(self):
+        return self.time_to_think_millis - self.time_left_millis
 
 
 def random_state():
@@ -149,13 +158,20 @@ def state_to_string(s: RoundOneState):
     return s.dices[s.whos_turn] + actions
 
 
-def fight_once(bots):
+def fight_once(bots, games_left):
     state = random_state()
     first_to_move = state.whos_turn
     winner = None
     status = 'ok'
+    answer = ''
     while 1:
-        answer, time_spent = bots[state.whos_turn](state_to_string(state))
+        if bots[state.whos_turn].get_millis_left() <= 0:
+            winner = next_player(state.whos_turn)
+            status = TIMEOUT
+            answer = TIMEOUT
+            break
+        answer, time_spent = bots[state.whos_turn].communicate(state_to_string(state))
+        bots[state.whos_turn].time_left(time_spent)
         if answer not in all_possible_actions(state.actions[-1] if state.actions else ''):
             winner = next_player(state.whos_turn)
             status = ILLEGAL_ACTION
@@ -165,10 +181,19 @@ def fight_once(bots):
             winner = determine_winner(state)
             break
         state = RoundOneState(state.dices, next_player(state.whos_turn), state.actions + [answer])
-    return {'winner': winner,
-            'status': status,
-            'first_to_move': first_to_move,
-            'round_len': len(state.actions) + 1}
+
+    # send notifications that the game is over
+    for i, b in enumerate(bots):
+        w = 'win' if winner == i else 'loss'
+        rival_dice = state.dices[next_player(i)]
+        bots[i].communicate('%s %s %d %d' % (w, rival_dice, games_left, bots[i].get_millis_left()), read_answer=False)
+
+    result = {'winner': winner,
+              'status': status,
+              'first_to_move': first_to_move,
+              'round_len': len(state.actions) + 1,
+              'actions': ','.join(state.actions + [answer])}
+    return result
 
 
 def percent(numerator, denominator):
@@ -181,35 +206,43 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod()
 
-    if len(sys.argv) != 3:
-        print('Usage: python main.py bot1 bot2', file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="The Liar's Dice game bots contest. 2nd round.")
+    parser.add_argument('--games', type=int, help='how many games in a match (default=100)', default=100)
+    parser.add_argument('--timeout', type=int, help='time given to play the whole match for every bot in millis',
+                            default=1000)
+    #parser.add_argument('--log', type=bool, help='', action='store_true', default=False)
+    parser.add_argument('bot_names', help='bots fighting each other', nargs=2, default=['sample1', 'sample2'])
+    args = parser.parse_args()
+    print(args)
 
-    bot_names = sys.argv[1:3]
+    bot_names = args.bot_names
 
     bot_instructions = read_bot_instructions()
-    print(bot_instructions)
 
     os.chdir('bots')
 
-    bots = [PopenBot(bot['cmd'],
+    bots = [Bot(bot['cmd'],
                      bot['name'],
+                     args.timeout,
                      version=int(bot.get('version', 2)))
             for bot in [bot_instructions[b] for b in bot_names]]
     print(bot_names)
 
-    results = []
-    for i in range(10001):
-        if i % 100 == 0:
-            print(i)
-        results.append(fight_once(bots))
-
+    with open('%s-vs-%s.log' % tuple(bot_names), 'w') as f:
+        results = []
+        games_count = args.games
+        for i in range(games_count):
+            if i % 1000 == 0:
+                print(i)
+            r = fight_once(bots, games_count - i)
+            results.append(r)
+            f.write('winner\t%s\tactions\t%s' % (r['winner'], r['actions']))
     print()
-    #results = [fight_once(bots) for _ in range(1001)]
+
     games_count = len(results)
     for bot_id, bot in enumerate(bot_names):
         wins = len([r for r in results if r['winner'] == bot_id])
-        print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins}%%'.format(bot=bot,
+        print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins}'.format(bot=bot,
                                                                                     bot_wins=wins,
                                                                                     total_games=games_count,
                                                                                     percent_of_wins=percent(wins, games_count)))
