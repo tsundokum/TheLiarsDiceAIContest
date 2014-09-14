@@ -236,7 +236,7 @@ if __name__ == '__main__':
                 print(i)
             r = fight_once(bots, games_count - i)
             results.append(r)
-            f.write('winner\t%s\tactions\t%s' % (r['winner'], r['actions']))
+            f.write('winner\t%s\tactions\t%s\n' % (r['winner'], r['actions']))
     print()
 
     games_count = len(results)
