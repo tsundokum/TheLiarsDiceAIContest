@@ -13,7 +13,7 @@ from time import sleep, time
 
 TIMEOUT = 'timeout'
 
-TIMEOUT = 10.130
+DEFAULT_TIMEOUT = 10130
 ILLEGAL_ACTION = 'illegal_action'
 DELIM = ' -> '
 LIAR = 'liar'
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="The Liar's Dice game bots contest. 2nd round.")
     parser.add_argument('--games', type=int, help='how many games in a match (default=100)', default=100)
     parser.add_argument('--timeout', type=int, help='time given to play the whole match for every bot in millis',
-                            default=1000)
+                            default=DEFAULT_TIMEOUT)
     #parser.add_argument('--log', type=bool, help='', action='store_true', default=False)
     parser.add_argument('bot_names', help='bots fighting each other', nargs=2, default=['sample1', 'sample2'])
     args = parser.parse_args()
