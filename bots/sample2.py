@@ -4,7 +4,7 @@ import sys
 line = sys.stdin.readline()
 while line:
     if len(line.strip()) == 1:
-        print('1' + line.strip())
+        print('1' + line.strip(), flush=True)
     else:
-        print('liar')
+        print('liar', flush=True)
     line = sys.stdin.readline()

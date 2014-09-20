@@ -132,7 +132,7 @@ class Bot:
                 return
 
         start_time = time()
-        print(ros, file=self.proc.stdin)
+        print(ros, file=self.proc.stdin, flush=True)
         if read_answer:
             answer = self.proc.stdout.readline().strip()
             return answer.strip(), int((time() - start_time) * 1000)

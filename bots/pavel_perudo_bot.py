@@ -52,4 +52,5 @@ import sys
 l = sys.stdin.readline()
 while l:
     print(myturn(l.strip()))
+    sys.stdout.flush()
     l = sys.stdin.readline()
