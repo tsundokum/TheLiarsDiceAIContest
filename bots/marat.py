@@ -128,7 +128,10 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod()
 
-    for line in sys.stdin:
+
+    line = sys.stdin.readline()
+    while line:
         my_dice = line[0]
         last_move = line[2:].split(',')[-1].strip() if len(line) > 2 else ''
         print(decide(my_dice, last_move))
+        line = sys.stdin.readline()

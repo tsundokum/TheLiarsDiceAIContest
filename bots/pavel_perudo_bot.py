@@ -49,5 +49,7 @@ assert myturn("* 1*,2*") == "liar"
 
 import sys
 
-for l in sys.stdin:
+l = sys.stdin.readline()
+while l:
     print(myturn(l.strip()))
+    l = sys.stdin.readline()
