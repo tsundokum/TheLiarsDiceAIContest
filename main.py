@@ -227,7 +227,6 @@ if __name__ == '__main__':
                      args.timeout,
                      version=int(bot.get('version', 2)))
             for bot in [bot_instructions[b] for b in bot_names]]
-    print(bot_names)
 
     with open('%s-vs-%s.log' % tuple(bot_names), 'w') as f:
         results = []
