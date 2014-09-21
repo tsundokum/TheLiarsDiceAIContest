@@ -192,7 +192,8 @@ def fight_once(bots, games_left):
               'status': status,
               'first_to_move': first_to_move,
               'round_len': len(state.actions) + 1,
-              'actions': ','.join(state.actions + [answer])}
+              'actions': ','.join(state.actions + [answer]),
+              'dice': state.dices}
     return result
 
 
@@ -236,7 +237,12 @@ if __name__ == '__main__':
                 print(i)
             r = fight_once(bots, games_count - i)
             results.append(r)
-            f.write('winner\t%s\tactions\t%s\n' % (r['winner'], r['actions']))
+            f.write('\t'.join(['1st', bot_names[r['first_to_move']],
+                                '2nd', bot_names[next_player(r['first_to_move'])],
+                                'winner', bot_names[r['winner']],
+                                'dice1', str(r['dice'][0]),
+                                'dice2', str(r['dice'][1]),
+                                'actions', r['actions']]) + '\n')
     print()
 
     games_count = len(results)
