@@ -119,7 +119,7 @@ class Bot:
         self.command_to_start = command_to_start
         self.name = name
         self.version = version
-        self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        self.proc = Popen(shlex.split(self.command_to_start), universal_newlines=True, stdin=PIPE, stdout=PIPE)
         self.time_to_think_millis = timeout_millis
         self.time_left_millis = 0
 
