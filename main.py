@@ -18,6 +18,8 @@ ILLEGAL_ACTION = 'illegal_action'
 DELIM = ' -> '
 LIAR = 'liar'
 
+debug = False
+
 nominals = list([str(i) for i in range(1, 6)])
 dice_values = nominals + ['*']
 
@@ -133,8 +135,12 @@ class Bot:
 
         start_time = time()
         print(ros, file=self.proc.stdin, flush=True)
+        if debug:
+            print('sent "%s" to %s' % (ros, self.name), file=sys.stderr)
         if read_answer:
             answer = self.proc.stdout.readline().strip()
+            if debug:
+                print('received "%s" from %s' % (answer.strip(), self.name), file=sys.stderr)
             return answer.strip(), int((time() - start_time) * 1000)
 
     def time_left(self, millis):
@@ -211,11 +217,13 @@ if __name__ == '__main__':
     parser.add_argument('--games', type=int, help='how many games in a match (default=100)', default=100)
     parser.add_argument('--timeout', type=int, help='time given to play the whole match for every bot in millis',
                             default=DEFAULT_TIMEOUT)
+    parser.add_argument('--debug', action='store_true', default=False)
     #parser.add_argument('--log', type=bool, help='', action='store_true', default=False)
     parser.add_argument('bot_names', help='bots fighting each other', nargs=2, default=['sample1', 'sample2'])
     args = parser.parse_args()
     print(args)
 
+    debug = args.debug
     bot_names = args.bot_names
 
     bot_instructions = read_bot_instructions()
@@ -233,7 +241,7 @@ if __name__ == '__main__':
         games_count = args.games
         for i in range(games_count):
             if i % 1000 == 0:
-                print(i)
+                print("%d of %d" % (i, games_count), file=sys.stderr)
             r = fight_once(bots, games_count - i)
             results.append(r)
             f.write('\t'.join(['1st', bot_names[r['first_to_move']],

@@ -6,3 +6,6 @@
 {"name": "ilyin", "version": 1, "cmd": "java -jar ilyin-v1.1.jar"}
 {"name": "sample1", "version": 1, "cmd": "python3 -u sample1.py"}
 {"name": "sample2", "version": 1, "cmd": "python3 -u sample2.py"}
+{"name": "anton2", "cmd": "java -jar AntonPopovich2.jar"}
+{"name": "marat", "cmd": "java -jar liars-dice-round2-0.1.0-SNAPSHOT-standalone.jar"}
+
