@@ -1,9 +1,8 @@
 # bot files must be copied into 'bots' folder
 # add version=1 if you run a bot that is written for round 1
-{"name": "anton1", "version": 1, "cmd": "java -jar AntonPopovich.jar"}
 {"name": "anton", "version": 1, "cmd": "python3 -u anton_MaxChancePlayer.py"}
 {"name": "marat1", "version": 1, "cmd": "python3 -u marat.py"}
 {"name": "pavel", "version": 1, "cmd": "python3 -u pavel_perudo_bot.py"}
-# {"name": "ilyin", "version": 1, "cmd": "java -jar ilyin.jar"}
+{"name": "ilyin", "version": 1, "cmd": "java -jar ilyin-v1.1.jar"}
 {"name": "sample1", "version": 1, "cmd": "python3 -u sample1.py"}
 {"name": "sample2", "version": 1, "cmd": "python3 -u sample2.py"}
