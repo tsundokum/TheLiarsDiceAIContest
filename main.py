@@ -2,7 +2,7 @@
 import argparse
 from collections import namedtuple
 import json
-from random import choice
+from random import choice, randint, shuffle
 import shlex
 from statistics import mean
 from subprocess import Popen, PIPE
@@ -150,8 +150,9 @@ class Bot:
         return self.time_to_think_millis - self.time_left_millis
 
 
-def random_state():
-    return RoundOneState([random_dice(), random_dice()], choice([0, 1]), [])
+def random_state(first=None):
+    first_to_move = choice([0, 1]) if first is None else first
+    return RoundOneState([random_dice(), random_dice()], first_to_move, [])
 
 
 def state_to_string(s: RoundOneState):
@@ -164,8 +165,8 @@ def state_to_string(s: RoundOneState):
     return s.dices[s.whos_turn] + actions
 
 
-def fight_once(bots, games_left):
-    state = random_state()
+def fight_once(bots, games_left, who_first):
+    state = random_state(first=who_first)
     first_to_move = state.whos_turn
     winner = None
     status = 'ok'
@@ -236,20 +237,24 @@ if __name__ == '__main__':
                      version=int(bot.get('version', 2)))
             for bot in [bot_instructions[b] for b in bot_names]]
 
-    with open('%s-vs-%s.log' % tuple(bot_names), 'w') as f:
+    with open('../logs/%s-vs-%s.log' % tuple(bot_names), 'w') as f:
         results = []
         games_count = args.games
-        for i in range(games_count):
+        who_plays_first = [0] * (games_count // 2) + [1] * (games_count // 2)  + ([] if games_count % 2 == 0 else [randint(0, 1)])
+        shuffle(who_plays_first)
+        for i, first in enumerate(who_plays_first):
             if i % 1000 == 0:
                 print("%d of %d" % (i, games_count), file=sys.stderr)
-            r = fight_once(bots, games_count - i)
+            r = fight_once(bots, games_count - i, first)
             results.append(r)
             f.write('\t'.join(['1st', bot_names[r['first_to_move']],
                                 '2nd', bot_names[next_player(r['first_to_move'])],
                                 'winner', bot_names[r['winner']],
                                 'dice1', str(r['dice'][0]),
                                 'dice2', str(r['dice'][1]),
-                                'actions', r['actions']]) + '\n')
+                                'actions', r['actions'],
+                                'timeleft1', str(bots[0].get_millis_left()),
+                                'timeleft2', str(bots[1].get_millis_left())]) + '\n')
     print()
 
     games_count = len(results)
@@ -265,6 +270,7 @@ if __name__ == '__main__':
         print('lost by illegal moves: %d (%s of all losses)' % (illegal_moves, percent(illegal_moves, games_count - wins)))
         timeouts = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == TIMEOUT)])
         print('lost by timeouts: %d (%s of all losses)' % (timeouts, percent(timeouts, games_count - wins)))
+        print('time left %d' % bots[bot_names.index(bot)].get_millis_left())
         print()
 
     print('Mean round length is %0.2f turns' % mean([r['round_len'] for r in results]))
