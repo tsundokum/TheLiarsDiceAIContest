@@ -260,12 +260,12 @@ if __name__ == '__main__':
     games_count = len(results)
     for bot_id, bot in enumerate(bot_names):
         wins = len([r for r in results if r['winner'] == bot_id])
-        print('{bot} won {bot_wins} of {total_games} -- {percent_of_wins}'.format(bot=bot,
+        print('{bot} win {bot_wins} of {total_games} -- {percent_of_wins}'.format(bot=bot,
                                                                                     bot_wins=wins,
                                                                                     total_games=games_count,
                                                                                     percent_of_wins=percent(wins, games_count)))
         when_first = len([r for r in results if r['first_to_move'] == bot_id == r['winner']])
-        print('%s%% of wons having first move' % percent(when_first, wins))
+        print('%s%% of wins having first move' % percent(when_first, wins))
         illegal_moves = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == ILLEGAL_ACTION)])
         print('lost by illegal moves: %d (%s of all losses)' % (illegal_moves, percent(illegal_moves, games_count - wins)))
         timeouts = len([r for r in results if (r['winner'] != bot_id) and (r['status'] == TIMEOUT)])
